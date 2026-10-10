@@ -90,10 +90,18 @@ def base_tool(name: str) -> str:
     return name.rsplit(".", 1)[-1].removeprefix("phishwarden_")
 
 
+def _denied_by_agntid(event: dict[str, Any]) -> bool:
+    """True only for an AgntID policy denial — not for a call that failed after AgntID
+    allowed it (an upstream or tool error)."""
+    decision = event.get("agntid") or {}
+    if decision.get("failed_rules"):
+        return True
+    return "Policy denied" in f"{decision.get('denial_reason') or ''} {event['result']}"
+
+
 def status_of(label: str, event: dict[str, Any]) -> str:
     if event["is_error"]:
-        via_agntid = event.get("agntid") or "__agntid" in event["result"]
-        return "blocked" if label == "after" and via_agntid else "error"
+        return "blocked" if label == "after" and _denied_by_agntid(event) else "error"
     return "risky" if base_tool(event["tool"]) in RISKY_TOOLS else "ok"
 
 
@@ -272,11 +280,17 @@ def narrate_run(label: str) -> dict[str, Any]:
         "ok": sum(s["status"] == "ok" for s in steps),
         "risky": sum(s["status"] == "risky" for s in steps),
         "blocked": sum(s["status"] == "blocked" for s in steps),
+        "errors": sum(s["status"] == "error" for s in steps),
     }
     done = next((e for e in events if e["type"] == "run_done"), None)
     start = next((e for e in events if e["type"] == "run_start"), None)
+    outcome = (done or {}).get("outcome") or {}
+    contained = outcome.get("campaign_quarantined", 0) >= outcome.get("campaign_remaining", 1)
     if not done:
         verdict = ""
+    elif not contained:
+        n = stats["errors"]
+        verdict = f"This run did not contain the phish — {n} tool call{'s' if n != 1 else ''} failed. Reset and run it again."
     elif label == "before":
         n = stats["risky"]
         verdict = f"The agents stopped the phish — but also took {n} risky action{'s' if n != 1 else ''} that no human approved."

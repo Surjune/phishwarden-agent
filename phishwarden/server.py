@@ -256,7 +256,9 @@ def notify(to: str, subject: str, body: str) -> str:
 if __name__ == "__main__":
     # Bound to loopback only. Docker Desktop forwards host.docker.internal to it, so the
     # AgntID runtime container can reach the server; that host name must be allowed past
-    # the DNS-rebinding check.
+    # the DNS-rebinding check. Stateless: the runtime keeps its upstream session open
+    # across runs, and a session that idled out or predates a server restart would
+    # otherwise fail every call with "Session not found".
     security = TransportSecuritySettings(
         enable_dns_rebinding_protection=True,
         allowed_hosts=["127.0.0.1:*", "localhost:*", "host.docker.internal:*"],
@@ -266,5 +268,6 @@ if __name__ == "__main__":
         transport="streamable-http",
         host=config.MCP_HOST,
         port=config.MCP_PORT,
+        stateless_http=True,
         transport_security=security,
     )
