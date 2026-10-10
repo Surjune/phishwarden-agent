@@ -22,7 +22,7 @@ from mcp.client.streamable_http import create_mcp_http_client, streamable_http_c
 
 from phishwarden import config, llm, outcome, prompts, server
 
-TOOL_RESULT_LOG_CHARS = 1500
+TOOL_RESULT_LOG_CHARS = 6000
 
 
 class RunLog:
@@ -62,6 +62,36 @@ async def _open_agntid_task(mcp: Client, agntid_tools: set[str], agent: str, tas
     log.emit(type="agntid_task", agent=agent, task_id=task_id, is_error=bool(result.is_error),
              result=_result_text(result)[:TOOL_RESULT_LOG_CHARS])
     return task_id
+
+
+def _split_agntid(text: str) -> tuple[str, dict[str, Any] | None]:
+    """Separate the AgntID runtime's audit envelope from the tool's own output.
+
+    Through the runtime, a result is {"__agntid_execution_flow": ..., "__agntid_result": ...};
+    a denial is "Error executing tool <name>: {...}". Direct calls have no envelope.
+    """
+    payload = text
+    if text.startswith("Error executing tool") and ": {" in text:
+        payload = text[text.index(": {") + 2 :]
+    try:
+        data = json.loads(payload)
+    except json.JSONDecodeError:
+        return text, None
+    if not isinstance(data, dict) or "__agntid_execution_flow" not in data:
+        return text, None
+    flow = data["__agntid_execution_flow"]
+    info = {
+        "event_id": flow.get("event_id"),
+        "status": flow.get("status", "allowed"),
+        "steps": [{"step": s.get("step"), "status": s.get("status")} for s in flow.get("steps", [])],
+        "denial_reason": flow.get("denial_reason") or data.get("__agntid_error"),
+        "failed_rules": [r.get("rule_id") for r in flow.get("failed_rules", [])],
+        "duration_ms": flow.get("total_duration_ms"),
+    }
+    inner = data.get("__agntid_result")
+    if inner is None:
+        return "", info
+    return (inner if isinstance(inner, str) else json.dumps(inner, indent=2, ensure_ascii=False)), info
 
 
 def _api_tool_name(mcp_name: str) -> str:
@@ -125,13 +155,15 @@ async def run_agent(
                     text, is_error = _result_text(result), bool(result.is_error)
                 except Exception as exc:  # transport-level failure, e.g. a proxy rejecting the call
                     text, is_error = f"{type(exc).__name__}: {exc}", True
+                tool_output, agntid = _split_agntid(text)
                 log.emit(
                     type="tool_call",
                     agent=name,
                     tool=mcp_name,
                     input=call.args,
                     is_error=is_error,
-                    result=text[:TOOL_RESULT_LOG_CHARS],
+                    result=tool_output[:TOOL_RESULT_LOG_CHARS],
+                    agntid=agntid,
                 )
                 outcomes.append(llm.ToolOutcome(call=call, text=text, is_error=is_error))
             session.add_tool_results(outcomes)

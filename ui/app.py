@@ -145,7 +145,8 @@ details.pw-row.blocked summary { background:#fcf8ff; }
 .pw-who { width:118px; min-width:118px; font-weight:700; font-size:.88rem; color:#1f1f1f; }
 .pw-what { flex:1; font-size:.9rem; color:#1f1f1f; }
 .pw-what small { display:block; color:#5f6368; font-size:.8rem; margin-top:2px; }
-.pw-detail { padding:4px 20px 14px 70px; font-size:.82rem; color:#3c4043; }
+.pw-detail { padding:4px 20px 14px 70px; font-size:.86rem; color:#3c4043; line-height:1.5; }
+.pw-detail .pw-chip { margin: 2px 2px; }
 .pw-detail code { background:#f1f3f4; border-radius:4px; padding:2px 6px; font-size:.78rem; }
 .pw-detail pre { background:#f8f9fa; border-radius:8px; padding:10px; max-height:220px; overflow:auto; font-size:.74rem; white-space:pre-wrap; }
 
@@ -202,17 +203,113 @@ def base_tool(name: str) -> str:
     return name.rsplit(".", 1)[-1].removeprefix("phishwarden_")
 
 
-def agntid_rule(result: str) -> str:
-    match = re.search(r'"__agntid_error":\s*"Policy denied:\s*([^"]+)"', result) or re.search(
-        r'"__agntid_error":\s*"([^"]+)"', result
-    )
+def agntid_rule(event: dict[str, Any]) -> str:
+    decision = event.get("agntid") or {}
+    if decision.get("failed_rules"):
+        return decision["failed_rules"][0]
+    match = re.search(r'"__agntid_error":\s*"Policy denied:\s*([^"]+)"', event["result"])
     return match.group(1).strip() if match else ""
 
 
 def status_of(label: str, event: dict[str, Any]) -> str:
     if event["is_error"]:
-        return "blocked" if label == "after" and "__agntid" in event["result"] else "error"
+        via_agntid = event.get("agntid") or "__agntid" in event["result"]
+        return "blocked" if label == "after" and via_agntid else "error"
     return "risky" if base_tool(event["tool"]) in RISKY_TOOLS else "ok"
+
+
+def findings(event: dict[str, Any]) -> list[str]:
+    """What the tool call actually found or did, in plain English."""
+    try:
+        r = json.loads(event["result"])
+    except (json.JSONDecodeError, TypeError):
+        return []
+    if not isinstance(r, dict):
+        return []
+    tool = base_tool(event["tool"])
+    if tool == "get_report":
+        h = r.get("headers", {})
+        auth = " ".join(h.get("Authentication-Results") or [])
+        checks = ", ".join(f"{k.upper()} {'failed' if f'{k}=fail' in auth else 'passed'}" for k in ("spf", "dmarc"))
+        sender = " ".join(h.get("From") or [])
+        return [f"Sender: {sender}", f"Sender checks: {checks}", f"Links in the email: {len(r.get('urls', []))}"]
+    if tool == "check_url":
+        if r.get("verdict") == "unknown":
+            return ["No threat intelligence on this site yet"]
+        kind = {
+            "credential_harvest": "a fake sign-in page that steals passwords",
+            "parked": "an empty site",
+            "corporate_site": "a normal company website",
+        }.get(r.get("page_type", ""), r.get("page_type", ""))
+        lines = [f"The site is {kind}", f"Domain registered {r.get('domain_age_days')} days ago"]
+        if r.get("seen_in_threat_feeds"):
+            lines.append("Already listed in threat-intelligence feeds")
+        return lines
+    if tool == "search_mail":
+        people = sorted({person(t) for m in r.get("messages", []) for t in m.get("to", [])})
+        more = " …" if len(people) > 6 else ""
+        return [f"Found {r.get('count', 0)} copies", "Received by: " + ", ".join(people[:6]) + more]
+    if tool == "get_click_logs":
+        clickers = [person(c["user"]) for c in r.get("clicks", [])]
+        return [f"{len(clickers)} people clicked the link" + (": " + ", ".join(clickers) if clickers else "")]
+    if tool == "get_signin_logs":
+        odd = [x for x in r.get("signins", []) if x.get("new_location")]
+        if odd:
+            first = odd[0]
+            return [
+                f"⚠ Signed in from {first['location']} via {first['asn']} — not their usual location",
+                f"MFA: {first.get('mfa')}",
+                "This account is likely in the attacker's hands",
+            ]
+        return ["Only normal sign-ins from usual locations"]
+    if tool == "lookup_user":
+        return [f"{r.get('name')} — {r.get('title')}, {r.get('department')}"]
+    if tool == "read_mailbox":
+        subjects = [m.get("subject", "") for m in r.get("messages", [])]
+        return [f"Read {r.get('count', 0)} private emails, including:"] + [f"“{x}”" for x in subjects[:5]]
+    if tool == "quarantine_messages":
+        return [f"{r.get('quarantined', 0)} emails moved to quarantine"]
+    if tool == "purge_messages":
+        return [f"{r.get('deleted', 0)} emails permanently deleted"]
+    if tool == "revoke_sessions":
+        return ["Signed out of every device; must sign in again"]
+    if tool == "disable_account":
+        return ["Account disabled — the person cannot work until IT re-enables it"]
+    if tool == "block_sender_domain":
+        return ["Now blocked: " + ", ".join(r.get("blocked_domains", []))]
+    if tool == "allowlist_sender":
+        return ["Now trusted: " + ", ".join(r.get("allowlisted_domains", []))]
+    if tool == "notify":
+        return [f"Email sent to {person(r.get('sent_to', ''))}"]
+    return []
+
+
+STEP_NAMES = {
+    "guardrail_validation": "Safety guardrails",
+    "intent_parsing": "Task / intent check",
+    "policy_evaluation": "Policy check",
+    "credential_resolution": "Credentials scoped",
+    "tool_execution": "Tool ran",
+}
+STEP_MARK = {"passed": "✔", "success": "✔", "allowed": "✔", "denied": "✖", "failed": "✖", "skipped": "–"}
+STEP_CHIP = {"passed": "pw-chip-ok", "success": "pw-chip-ok", "allowed": "pw-chip-ok", "denied": "pw-chip-blocked", "failed": "pw-chip-blocked"}
+
+
+def agntid_check_html(event: dict[str, Any], status: str) -> str:
+    decision = event.get("agntid")
+    if not decision:
+        return ""
+    steps = " ".join(
+        f"<span class='pw-chip {STEP_CHIP.get(x['status'], 'pw-chip-error')}'>"
+        f"{STEP_MARK.get(x['status'], '·')} {STEP_NAMES.get(x['step'], x['step'])}</span>"
+        for x in decision.get("steps", [])
+    )
+    verdict = "stopped this call before it ran" if status == "blocked" else "checked this call and allowed it"
+    audit = html.escape(decision.get("event_id") or "")
+    return (
+        f"<p><b>🛡️ AgntID {verdict}.</b> {steps}<br>"
+        f"<span style='color:#5f6368'>Audit record: <code>{audit}</code></span></p>"
+    )
 
 
 def describe(event: dict[str, Any]) -> tuple[str, str]:
@@ -271,14 +368,26 @@ def row_html(label: str, event: dict[str, Any]) -> str:
     letter, avatar, who, _ = AGENTS.get(event["agent"], ("?", "pw-av-x", event["agent"], ""))
     what, detail = describe(event)
     chip_cls, chip_text = CHIP[status]
-    reason_html = ""
+    found = findings(event) if status in ("ok", "risky") else []
+    parts = []
     if status == "blocked":
-        rule = agntid_rule(event["result"])
+        rule = agntid_rule(event)
         plain = DENIAL_REASONS.get(rule, rule.replace("_", " ").capitalize())
-        reason_html = f"<p><b>Why AgntID blocked it:</b> {html.escape(plain)}<br><span style='color:#5f6368'>Policy rule: <code>{html.escape(rule)}</code></span></p>"
-        detail = "Stopped before it ran"
-    detail_html = f"<small>{html.escape(detail)}</small>" if detail else ""
+        parts.append(f"<p><b>Why it was blocked:</b> {html.escape(plain)}</p>")
+        detail = "Stopped before it ran — nothing was read or changed"
+    elif status == "error":
+        parts.append("<p><b>The tool reported an error</b> and nothing was changed.</p>")
+    if found:
+        items = "".join(f"<li>{html.escape(x)}</li>" for x in found)
+        parts.append(f"<p style='margin-bottom:2px'><b>What it found / did:</b></p><ul style='margin-top:0'>{items}</ul>")
+    parts.append(agntid_check_html(event, status))
     args = html.escape(json.dumps(event["input"], ensure_ascii=False))
+    raw = html.escape((event["result"] or json.dumps(event.get("agntid") or {}, indent=2))[:4000])
+    parts.append(
+        "<details><summary style='color:#5f6368;cursor:pointer'>Show technical log</summary>"
+        f"<p>Call: <code>{html.escape(event['tool'])}</code> with <code>{args}</code></p><pre>{raw}</pre></details>"
+    )
+    detail_html = f"<small>{html.escape(detail)}</small>" if detail else ""
     return f"""
 <details class="pw-row {status}">
   <summary>
@@ -287,10 +396,7 @@ def row_html(label: str, event: dict[str, Any]) -> str:
     <span class="pw-what">{html.escape(what)}{detail_html}</span>
     <span class="pw-chip {chip_cls}">{chip_text}</span>
   </summary>
-  <div class="pw-detail">{reason_html}
-    <p>Technical call: <code>{html.escape(event['tool'])}</code> with <code>{args}</code></p>
-    <pre>{html.escape(event['result'][:1500])}</pre>
-  </div>
+  <div class="pw-detail">{"".join(parts)}</div>
 </details>"""
 
 

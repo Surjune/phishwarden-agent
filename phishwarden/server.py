@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from email.message import EmailMessage
 from typing import Any
 
+import httpx
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.server.transport_security import TransportSecuritySettings
@@ -140,7 +141,10 @@ def read_mailbox(user: str, limit: int = 50) -> str:
     _known_user(user)
     messages = []
     for msg in mailpit.search(f"to:{user}", limit=limit):
-        full = mailpit.get_message(msg["ID"])
+        try:
+            full = mailpit.get_message(msg["ID"])
+        except httpx.HTTPStatusError:
+            continue  # deleted between the search and the fetch (e.g. by a purge)
         messages.append({**_summary(msg), "body_text": full["Text"]})
     return _json({"mailbox": user, "count": len(messages), "messages": messages})
 
