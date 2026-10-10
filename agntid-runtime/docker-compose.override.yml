@@ -4,3 +4,6 @@ services:
     ports: !override
       - "127.0.0.1:8080:8080"
       - "127.0.0.1:8082:8000"
+    # Docker Desktop provides host.docker.internal; on a Linux server it must be mapped.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

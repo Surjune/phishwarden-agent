@@ -21,6 +21,10 @@ MAILPIT_SMTP_PORT = int(os.getenv("MAILPIT_SMTP_PORT", "1025"))
 MCP_HOST = os.getenv("MCP_HOST", "127.0.0.1")
 MCP_PORT = int(os.getenv("MCP_PORT", "8000"))
 DIRECT_MCP_URL = f"http://{MCP_HOST}:{MCP_PORT}/mcp"
+# Interface the MCP server listens on. On a Linux host the AgntID container reaches the
+# server through the Docker bridge, not loopback, so a server deployment sets 0.0.0.0
+# (with the port closed in the firewall) while clients still connect via MCP_HOST.
+MCP_BIND_HOST = os.getenv("MCP_BIND_HOST", MCP_HOST)
 
 # Where each agent sends its tool calls. Pointing these at the AgntID runtime proxy is the
 # only change between the "before" and "after" runs.

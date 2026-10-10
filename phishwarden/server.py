@@ -270,7 +270,7 @@ if __name__ == "__main__":
     )
     server.run(
         transport="streamable-http",
-        host=config.MCP_HOST,
+        host=config.MCP_BIND_HOST,
         port=config.MCP_PORT,
         stateless_http=True,
         transport_security=security,
