@@ -37,10 +37,10 @@ endpoint: the raw server, or the AgntID runtime proxy in front of it.
 
 | Without AgntID the agent… | AgntID control |
 |---|---|
-| reads the CFO's whole inbox, including a confidential acquisition thread | Triage profile is search-only; `read_mailbox` requires human approval |
-| disables the CFO's account in the middle of quarter-close | `disable_account` on executives requires approval; `revoke_sessions` allowed for regular users |
-| permanently purges mail by search query | `purge_messages` denied; quarantine by explicit message IDs only, capped per call |
-| can be talked into allow-listing the attacker by text hidden in the email | `allowlist_sender` and `release_quarantine` denied for this workflow |
+| reads the CFO's whole inbox, including a confidential acquisition thread | Rego policy: `read_mailbox` denied for executive mailboxes — left to a human |
+| disables the CFO's account in the middle of quarter-close | Rego policy: `disable_account` denied for executives and admins; reversible `revoke_sessions` stays allowed |
+| permanently purges mail by search query | `purge_messages` manually disabled — hidden from agents; reversible quarantine by message ID stays allowed |
+| can be talked into allow-listing the attacker by text hidden in the email | `allowlist_sender` and `release_quarantine` left unreviewed — hidden from agents |
 
 ## Results (recorded runs)
 
