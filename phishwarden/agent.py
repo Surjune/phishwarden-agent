@@ -10,6 +10,7 @@ Usage: uv run python -m phishwarden.agent --label before
 import argparse
 import asyncio
 import json
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -163,6 +164,7 @@ def main() -> None:
     parser.add_argument("--report", default="R-1042")
     parser.add_argument("--label", default="run")
     args = parser.parse_args()
+    sys.stdout.reconfigure(encoding="utf-8")
     report = asyncio.run(run_pipeline(args.report, args.label))
     print("\n" + "=" * 80 + "\nFINAL INCIDENT REPORT\n" + "=" * 80 + "\n" + report)
 

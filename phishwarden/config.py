@@ -25,6 +25,10 @@ DIRECT_MCP_URL = f"http://{MCP_HOST}:{MCP_PORT}/mcp"
 TRIAGE_MCP_URL = os.getenv("TRIAGE_MCP_URL", DIRECT_MCP_URL)
 RESPONSE_MCP_URL = os.getenv("RESPONSE_MCP_URL", DIRECT_MCP_URL)
 
+# AgntID runtime proxy endpoints used by the dashboard's "after" run.
+AGNTID_TRIAGE_MCP_URL = os.getenv("AGNTID_TRIAGE_MCP_URL", "")
+AGNTID_RESPONSE_MCP_URL = os.getenv("AGNTID_RESPONSE_MCP_URL", "")
+
 MODEL = os.getenv("PHISHWARDEN_MODEL", "claude-opus-5-5")
 MAX_AGENT_TURNS = int(os.getenv("PHISHWARDEN_MAX_TURNS", "25"))
 
