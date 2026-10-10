@@ -26,12 +26,9 @@ college, a hospital or a bank. It works on company mailboxes (for example
 
 ## How it works
 
-```
- Employee reports        Triage agent                 Response agent
- a suspicious email ──►  investigates      ──────►    cleans up        ──►  Incident report
-                         "is it phishing?             "remove it, lock
-                          who is affected?"            out the attacker"
-```
+<p align="center">
+  <img src="docs/workflow.svg" alt="An employee reports an email, the triage agent investigates, the response agent cleans up, and an incident report is written" width="100%">
+</p>
 
 | Agent | What it does |
 |---|---|
@@ -72,12 +69,9 @@ Mail and identity permissions are all-or-nothing, so the systems themselves cann
 "search mailboxes, but don't read the CFO's". AgntID can: it sits between the agents and
 their tools and decides, for every single call, whether it is allowed.
 
-```
-Triage agent   ─┐                    ┌─►  allowed  ──►  company mail, accounts, logs
-                ├──►   AgntID   ─────┤
-Response agent ─┘   (checks every    └─►  blocked  ──►  reason recorded in the audit log
-                     tool call)
-```
+<p align="center">
+  <img src="docs/agntid-gate.svg" alt="Every tool call from both agents passes through AgntID, which either allows it to reach company mail, accounts and logs, or blocks it and records the reason in the audit log" width="100%">
+</p>
 
 ## Before and after
 

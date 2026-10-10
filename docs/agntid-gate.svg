@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" width="1200" height="320" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>Both agents' tool calls pass through AgntID, which either allows them to reach company mail, accounts and logs, or blocks them and records the reason in the audit log</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#94a3b8"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#059669"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#dc2626"/>
+    </marker>
+  </defs>
+  <rect x="1" y="1" width="1198" height="318" rx="18" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+
+  <!-- connectors -->
+  <g fill="none" stroke-width="2.5">
+    <path d="M280 95 C 340 95, 340 160, 404 160" stroke="#94a3b8" marker-end="url(#arrow)"/>
+    <path d="M280 225 C 340 225, 340 160, 404 160" stroke="#94a3b8" marker-end="url(#arrow)"/>
+    <path d="M760 160 C 800 160, 800 95, 834 95" stroke="#059669" marker-end="url(#arrow-green)"/>
+    <path d="M760 160 C 800 160, 800 225, 834 225" stroke="#dc2626" marker-end="url(#arrow-red)"/>
+  </g>
+  <text x="300" y="300" font-size="13" fill="#64748b" text-anchor="middle">every tool call</text>
+
+  <!-- agents -->
+  <rect x="40" y="58" width="240" height="74" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+  <circle cx="76" cy="95" r="18" fill="#3b82f6"/>
+  <text x="76" y="101" font-size="16" font-weight="700" fill="#ffffff" text-anchor="middle">T</text>
+  <text x="106" y="91" font-size="18" font-weight="700" fill="#0f172a">Triage agent</text>
+  <text x="106" y="113" font-size="13" fill="#64748b">investigates</text>
+
+  <rect x="40" y="188" width="240" height="74" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+  <circle cx="76" cy="225" r="18" fill="#10b981"/>
+  <text x="76" y="231" font-size="16" font-weight="700" fill="#ffffff" text-anchor="middle">R</text>
+  <text x="106" y="221" font-size="18" font-weight="700" fill="#0f172a">Response agent</text>
+  <text x="106" y="243" font-size="13" fill="#64748b">contains the threat</text>
+
+  <!-- AgntID -->
+  <rect x="410" y="70" width="350" height="180" rx="18" fill="#4f46e5"/>
+  <path d="M470 108 l22 -8 l22 8 v18 c0 14 -10 24 -22 29 c-12 -5 -22 -15 -22 -29 z" fill="none" stroke="#ffffff" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M482 128 l7 7 l14 -15" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="530" y="127" font-size="28" font-weight="800" fill="#ffffff">AgntID</text>
+  <text x="530" y="150" font-size="14" fill="#e0e7ff">runtime access control</text>
+  <text x="585" y="196" font-size="16" font-weight="600" fill="#ffffff" text-anchor="middle">Checks every tool call</text>
+  <text x="585" y="222" font-size="13" fill="#c7d2fe" text-anchor="middle">profiles · action review · Rego policies</text>
+
+  <!-- outcomes -->
+  <rect x="840" y="58" width="320" height="74" rx="14" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="2"/>
+  <text x="864" y="91" font-size="18" font-weight="700" fill="#047857">✓ Allowed</text>
+  <text x="864" y="114" font-size="14" fill="#065f46">reaches company mail, accounts, logs</text>
+
+  <rect x="840" y="188" width="320" height="74" rx="14" fill="#fef2f2" stroke="#fecaca" stroke-width="2"/>
+  <text x="864" y="221" font-size="18" font-weight="700" fill="#b91c1c">✕ Blocked</text>
+  <text x="864" y="244" font-size="14" fill="#991b1b">reason recorded in the audit log</text>
+</svg>

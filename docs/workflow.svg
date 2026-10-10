@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 268" width="1200" height="268" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>PhishWarden workflow: an employee reports an email, the triage agent investigates, the response agent cleans up, and an incident report is written</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+  <rect x="1" y="1" width="1198" height="266" rx="18" fill="#f8fafc" stroke="#e2e8f0" stroke-width="2"/>
+
+  <!-- connectors -->
+  <g stroke="#94a3b8" stroke-width="2.5" marker-end="url(#arrow)">
+    <line x1="284" y1="134" x2="334" y2="134"/>
+    <line x1="584" y1="134" x2="634" y2="134"/>
+    <line x1="884" y1="134" x2="934" y2="134"/>
+  </g>
+
+  <!-- 1: report -->
+  <rect x="40" y="50" width="240" height="168" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+  <rect x="40" y="50" width="240" height="6" rx="3" fill="#94a3b8"/>
+  <text x="62" y="88" font-size="12" font-weight="700" fill="#64748b" letter-spacing="1.2">STEP 1</text>
+  <text x="62" y="118" font-size="20" font-weight="700" fill="#0f172a">Employee reports</text>
+  <text x="62" y="142" font-size="20" font-weight="700" fill="#0f172a">a suspicious email</text>
+  <text x="62" y="176" font-size="14" fill="#64748b">Clicks “Report phishing”</text>
+
+  <!-- 2: triage -->
+  <rect x="340" y="50" width="240" height="168" rx="14" fill="#ffffff" stroke="#c7d2fe" stroke-width="2"/>
+  <rect x="340" y="50" width="240" height="6" rx="3" fill="#4f46e5"/>
+  <text x="362" y="88" font-size="12" font-weight="700" fill="#4f46e5" letter-spacing="1.2">STEP 2 · TRIAGE AGENT</text>
+  <text x="362" y="118" font-size="20" font-weight="700" fill="#0f172a">Investigates</text>
+  <text x="362" y="150" font-size="14" fill="#475569">Is it phishing?</text>
+  <text x="362" y="172" font-size="14" fill="#475569">Who got it, who clicked,</text>
+  <text x="362" y="192" font-size="14" fill="#475569">whose account was taken?</text>
+
+  <!-- 3: response -->
+  <rect x="640" y="50" width="240" height="168" rx="14" fill="#ffffff" stroke="#a7f3d0" stroke-width="2"/>
+  <rect x="640" y="50" width="240" height="6" rx="3" fill="#059669"/>
+  <text x="662" y="88" font-size="12" font-weight="700" fill="#059669" letter-spacing="1.2">STEP 3 · RESPONSE AGENT</text>
+  <text x="662" y="118" font-size="20" font-weight="700" fill="#0f172a">Cleans up</text>
+  <text x="662" y="150" font-size="14" fill="#475569">Quarantines it everywhere,</text>
+  <text x="662" y="172" font-size="14" fill="#475569">signs hacked accounts out,</text>
+  <text x="662" y="192" font-size="14" fill="#475569">blocks the attacker</text>
+
+  <!-- 4: report -->
+  <rect x="940" y="50" width="220" height="168" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+  <rect x="940" y="50" width="220" height="6" rx="3" fill="#94a3b8"/>
+  <text x="962" y="88" font-size="12" font-weight="700" fill="#64748b" letter-spacing="1.2">STEP 4</text>
+  <text x="962" y="118" font-size="20" font-weight="700" fill="#0f172a">Incident report</text>
+  <text x="962" y="150" font-size="14" fill="#475569">Verdict, scope,</text>
+  <text x="962" y="172" font-size="14" fill="#475569">actions taken and</text>
+  <text x="962" y="192" font-size="14" fill="#475569">next steps</text>
+</svg>
