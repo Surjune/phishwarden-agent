@@ -103,7 +103,7 @@ def _denied_by_agntid(event: dict[str, Any]) -> bool:
     """True only for an AgntID policy denial — not for a call that failed after AgntID
     allowed it (an upstream or tool error)."""
     decision = event.get("agntid") or {}
-    if decision.get("failed_rules"):
+    if decision.get("status") == "denied" or decision.get("failed_rules"):
         return True
     return "Policy denied" in f"{decision.get('denial_reason') or ''} {event['result']}"
 
@@ -246,7 +246,10 @@ def _decision(event: dict[str, Any], status: str) -> dict[str, Any] | None:
             for s in decision.get("steps", [])
         ],
         "rule": rule,
-        "reason": DENIAL_REASONS.get(rule, rule.replace("_", " ").capitalize()) if rule else "",
+        "reason": DENIAL_REASONS.get(rule, rule.replace("_", " ").capitalize()) if rule else (
+            "AgntID could not finish its policy check in time, so it denied the call by default (fails closed)."
+            if status == "blocked" else ""
+        ),
     }
 
 

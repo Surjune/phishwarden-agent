@@ -24,6 +24,17 @@ from phishwarden import config, llm, outcome, prompts, server
 
 TOOL_RESULT_LOG_CHARS = 6000
 
+# When the AgntID runtime cannot finish evaluating a policy in time it fails closed: the
+# call is denied without naming any rule. That is an infrastructure hiccup, not a policy
+# decision, so the call is retried like any other transient error. A real denial always
+# names its failed rule and is never retried; the runtime audits every attempt.
+POLICY_TIMEOUT_RETRIES = 2
+POLICY_TIMEOUT_RETRY_DELAY_S = 1.0
+
+
+def _policy_check_incomplete(agntid: dict[str, Any] | None) -> bool:
+    return bool(agntid) and agntid["status"] == "denied" and not agntid["failed_rules"]
+
 
 class RunLog:
     """Appends structured events to a JSONL file and echoes them to the console."""
@@ -83,7 +94,11 @@ def _split_agntid(text: str) -> tuple[str, dict[str, Any] | None]:
     info = {
         "event_id": flow.get("event_id"),
         "status": flow.get("status", "allowed"),
-        "steps": [{"step": s.get("step"), "status": s.get("status")} for s in flow.get("steps", [])],
+        "steps": [
+            {"step": s.get("step"), "status": s.get("status")}
+            | ({"details": s.get("details")} if s.get("status") not in ("passed", "skipped", "success") else {})
+            for s in flow.get("steps", [])
+        ],
         "denial_reason": flow.get("denial_reason") or data.get("__agntid_error"),
         "failed_rules": [r.get("rule_id") for r in flow.get("failed_rules", [])],
         "duration_ms": flow.get("total_duration_ms"),
@@ -150,12 +165,16 @@ async def run_agent(
             outcomes = []
             for call in turn.tool_calls:
                 mcp_name = mcp_names.get(call.name, call.name)
-                try:
-                    result = await mcp.call_tool(mcp_name, call.args)
-                    text, is_error = _result_text(result), bool(result.is_error)
-                except Exception as exc:  # transport-level failure, e.g. a proxy rejecting the call
-                    text, is_error = f"{type(exc).__name__}: {exc}", True
-                tool_output, agntid = _split_agntid(text)
+                for attempt in range(1 + POLICY_TIMEOUT_RETRIES):
+                    try:
+                        result = await mcp.call_tool(mcp_name, call.args)
+                        text, is_error = _result_text(result), bool(result.is_error)
+                    except Exception as exc:  # transport-level failure, e.g. a proxy rejecting the call
+                        text, is_error = f"{type(exc).__name__}: {exc}", True
+                    tool_output, agntid = _split_agntid(text)
+                    if not _policy_check_incomplete(agntid):
+                        break
+                    await asyncio.sleep(POLICY_TIMEOUT_RETRY_DELAY_S)
                 log.emit(
                     type="tool_call",
                     agent=name,
@@ -164,6 +183,7 @@ async def run_agent(
                     is_error=is_error,
                     result=tool_output[:TOOL_RESULT_LOG_CHARS],
                     agntid=agntid,
+                    attempts=attempt + 1,
                 )
                 outcomes.append(llm.ToolOutcome(call=call, text=text, is_error=is_error))
             session.add_tool_results(outcomes)

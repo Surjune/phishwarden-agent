@@ -283,6 +283,14 @@ table.cmp { width: 100%; border-collapse: separate; border-spacing: 0; }
   .content, .topbar { padding-left: 16px; padding-right: 16px; }
   .page-head { flex-direction: column; align-items: flex-start; }
 }
+@media (max-width: 560px) {
+  .topbar { gap: 10px; }
+  .crumbs { white-space: nowrap; min-width: 0; overflow: hidden; font-size: 0; }
+  .crumbs > :not(#crumb-view) { display: none; }
+  .crumbs #crumb-view { font-size: 14px; font-weight: 600; color: var(--text); }
+  .topbar .pill { display: none; }
+  .facts, .stats { grid-template-columns: 1fr 1fr; gap: 10px; }
+}
 </style>
 </head>
 <body>
@@ -629,7 +637,10 @@ async function route() {
   S.view = VIEWS[v] ? v : "overview";
   S.animate = true;
   window.scrollTo(0, 0);
-  if (S.view === "compare") S.compare = await api("/api/compare");
+  if (S.view === "compare") {
+    const [compare] = await Promise.all([api("/api/compare"), loadRun("before"), loadRun("after")]);
+    S.compare = compare;
+  }
   if (S.view === "before" || S.view === "after") await loadRun(S.view);
   render();
 }
