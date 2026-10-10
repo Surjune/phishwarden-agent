@@ -9,6 +9,8 @@ dependencies = [
     "httpx",
     "python-dotenv",
     "google-genai>=2.29.0",
+    "starlette>=1.7.0",
+    "uvicorn>=0.54.0",
 ]
 
 [build-system]
