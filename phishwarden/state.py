@@ -1,6 +1,7 @@
 """Fixture loading and the mock identity / mail-flow state, persisted to state/state.json."""
 
 import json
+import os
 from datetime import datetime, timezone
 from typing import Any
 
@@ -34,7 +35,10 @@ def load() -> dict[str, Any]:
 
 def save(state: dict[str, Any]) -> None:
     config.STATE_DIR.mkdir(exist_ok=True)
-    STATE_FILE.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    # Write then rename, so a reader never sees a half-written file.
+    tmp = STATE_FILE.with_suffix(f".{os.getpid()}.tmp")
+    tmp.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    os.replace(tmp, STATE_FILE)
 
 
 def reset() -> None:

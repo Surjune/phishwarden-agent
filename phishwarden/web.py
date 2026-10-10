@@ -30,6 +30,13 @@ RUN_ENDPOINTS = {
 }
 
 _processes: dict[str, subprocess.Popen[bytes]] = {}
+# Held while the mailbox is being reseeded, so a second click can't start a run (or a
+# reset) before the first run's process is registered.
+_seeding = asyncio.Lock()
+
+
+def _busy() -> bool:
+    return _seeding.locked() or any(_running(name) for name in narrate.LABELS)
 
 
 def _running(label: str) -> bool:
@@ -70,30 +77,32 @@ async def start_run(request: Request) -> JSONResponse:
     label = _label(request)
     if label is None:
         return JSONResponse({"error": "unknown run"}, status_code=404)
-    if any(_running(name) for name in narrate.LABELS):
+    if _busy():
         return JSONResponse({"error": "A run is already in progress."}, status_code=409)
     triage_url, response_url = RUN_ENDPOINTS[label]
     if not triage_url:
         return JSONResponse({"error": "AgntID proxy URL is not configured."}, status_code=400)
-    await asyncio.to_thread(seed.seed)
-    config.RUNS_DIR.mkdir(exist_ok=True)
-    (config.RUNS_DIR / f"{label}.jsonl").write_text("", encoding="utf-8")
-    env = {**os.environ, "TRIAGE_MCP_URL": triage_url, "RESPONSE_MCP_URL": response_url, "PYTHONIOENCODING": "utf-8"}
-    stderr_log = (config.RUNS_DIR / f"{label}.stderr.log").open("wb")
-    _processes[label] = subprocess.Popen(
-        [sys.executable, "-m", "phishwarden.agent", "--label", label],
-        cwd=config.ROOT,
-        env=env,
-        stdout=subprocess.DEVNULL,
-        stderr=stderr_log,
-    )
+    async with _seeding:
+        await asyncio.to_thread(seed.seed)
+        config.RUNS_DIR.mkdir(exist_ok=True)
+        (config.RUNS_DIR / f"{label}.jsonl").write_text("", encoding="utf-8")
+        env = {**os.environ, "TRIAGE_MCP_URL": triage_url, "RESPONSE_MCP_URL": response_url, "PYTHONIOENCODING": "utf-8"}
+        stderr_log = (config.RUNS_DIR / f"{label}.stderr.log").open("wb")
+        _processes[label] = subprocess.Popen(
+            [sys.executable, "-m", "phishwarden.agent", "--label", label],
+            cwd=config.ROOT,
+            env=env,
+            stdout=subprocess.DEVNULL,
+            stderr=stderr_log,
+        )
     return JSONResponse({"started": label})
 
 
 async def reset(_: Request) -> JSONResponse:
-    if any(_running(name) for name in narrate.LABELS):
+    if _busy():
         return JSONResponse({"error": "Wait for the current run to finish."}, status_code=409)
-    count = await asyncio.to_thread(seed.seed)
+    async with _seeding:
+        count = await asyncio.to_thread(seed.seed)
     return JSONResponse({"messages": count})
 
 
