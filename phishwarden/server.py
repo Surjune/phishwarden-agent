@@ -14,6 +14,7 @@ from typing import Any
 
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
+from mcp.server.transport_security import TransportSecuritySettings
 
 from phishwarden import config, mailpit, state
 
@@ -249,4 +250,17 @@ def notify(to: str, subject: str, body: str) -> str:
 
 
 if __name__ == "__main__":
-    server.run(transport="streamable-http", host=config.MCP_HOST, port=config.MCP_PORT)
+    # Bound to loopback only. Docker Desktop forwards host.docker.internal to it, so the
+    # AgntID runtime container can reach the server; that host name must be allowed past
+    # the DNS-rebinding check.
+    security = TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=["127.0.0.1:*", "localhost:*", "host.docker.internal:*"],
+        allowed_origins=["http://127.0.0.1:*", "http://localhost:*", "http://host.docker.internal:*"],
+    )
+    server.run(
+        transport="streamable-http",
+        host=config.MCP_HOST,
+        port=config.MCP_PORT,
+        transport_security=security,
+    )
