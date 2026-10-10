@@ -73,7 +73,7 @@ docker compose up -d                       # Mailpit: http://localhost:8025
 uv sync
 uv run python -m phishwarden.seed          # deliver the demo mail, reset state
 uv run python -m phishwarden.server        # MCP server on :8000 (leave running)
-uv run streamlit run ui/app.py             # dashboard
+uv run python -m phishwarden.web           # dashboard: http://localhost:8600
 ```
 
 Command-line run without the dashboard:
@@ -98,5 +98,5 @@ the CEO and CFO; two click; the CFO's account then signs in from a new country.
 ```
 phishwarden/      config, Mailpit client, state, MCP server, agents, prompts, seed, outcome
 fixtures/         directory, mail, clicks, sign-ins, URL intelligence
-ui/app.py         Streamlit before/after dashboard
+phishwarden/web/  dashboard (single-page app) served by phishwarden/web.py
 ```
