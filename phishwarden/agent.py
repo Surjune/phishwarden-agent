@@ -10,6 +10,7 @@ Usage: uv run python -m phishwarden.agent --label before
 import argparse
 import asyncio
 import json
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -47,6 +48,10 @@ class RunLog:
             print(f"== {kind}: {event.get('agent', '')} {event.get('mcp_url', '')}")
 
 
+def _api_tool_name(mcp_name: str) -> str:
+    return re.sub(r"[^a-zA-Z0-9_-]", "_", mcp_name)[:64]
+
+
 def _result_text(result: Any) -> str:
     parts = [getattr(block, "text", str(block)) for block in result.content]
     return "\n".join(parts) if parts else "(no content)"
@@ -68,11 +73,14 @@ async def run_agent(
     )
     async with Client(transport) as mcp:
         listed = await mcp.list_tools()
+        # The AgntID runtime prefixes tool names (e.g. "phishwarden.search_mail"); the Claude API
+        # only accepts [a-zA-Z0-9_-], so map API-safe names back to the MCP names.
+        mcp_names = {_api_tool_name(t.name): t.name for t in listed.tools}
         tools = [
-            {"name": t.name, "description": t.description or "", "input_schema": t.input_schema}
+            {"name": _api_tool_name(t.name), "description": t.description or "", "input_schema": t.input_schema}
             for t in listed.tools
         ]
-        log.emit(type="tools_listed", agent=name, tools=[t["name"] for t in tools])
+        log.emit(type="tools_listed", agent=name, tools=list(mcp_names.values()))
 
         messages: list[dict[str, Any]] = [{"role": "user", "content": task}]
         final_text = ""
@@ -105,14 +113,14 @@ async def run_agent(
             tool_results = []
             for block in tool_uses:
                 try:
-                    result = await mcp.call_tool(block.name, block.input)
+                    result = await mcp.call_tool(mcp_names[block.name], block.input)
                     text, is_error = _result_text(result), bool(result.is_error)
                 except Exception as exc:  # transport-level failure, e.g. a proxy rejecting the call
                     text, is_error = f"{type(exc).__name__}: {exc}", True
                 log.emit(
                     type="tool_call",
                     agent=name,
-                    tool=block.name,
+                    tool=mcp_names[block.name],
                     input=block.input,
                     is_error=is_error,
                     result=text[:TOOL_RESULT_LOG_CHARS],

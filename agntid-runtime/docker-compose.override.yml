@@ -1,0 +1,6 @@
+# Bind the runtime UI and MCP endpoint to this machine only (not the venue network).
+services:
+  achr-runtime:
+    ports: !override
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:8082:8000"

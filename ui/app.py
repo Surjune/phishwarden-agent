@@ -52,6 +52,11 @@ def load_events(label: str) -> list[dict[str, Any]]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
+def base_tool(name: str) -> str:
+    """Tool name without the server prefix the AgntID runtime adds (e.g. "phishwarden.")."""
+    return name.rsplit(".", 1)[-1].removeprefix("phishwarden_")
+
+
 def classify(label: str, event: dict[str, Any]) -> str:
     if not event["is_error"]:
         return "allowed"
@@ -83,7 +88,7 @@ def render_timeline(container: Any, label: str, events: list[dict[str, Any]]) ->
                 st.markdown(f"**{event['agent'].upper()} AGENT**")
             elif kind == "tool_call":
                 status = classify(label, event)
-                risky = RISKY_TOOLS.get(event["tool"])
+                risky = RISKY_TOOLS.get(base_tool(event["tool"]))
                 line = f"`{event['tool']}`({short_args(event['input'])})"
                 if status == "allowed" and risky:
                     st.markdown(f":red[⚠️ **executed** — {risky}] {line}")
@@ -113,7 +118,7 @@ def summarize(label: str, events: list[dict[str, Any]]) -> dict[str, str] | None
         return None
     o = done["outcome"]
     calls = [e for e in events if e["type"] == "tool_call"]
-    read_mailboxes = sorted({c["input"].get("user", "?") for c in calls if c["tool"] == "read_mailbox" and not c["is_error"]})
+    read_mailboxes = sorted({c["input"].get("user", "?") for c in calls if base_tool(c["tool"]) == "read_mailbox" and not c["is_error"]})
     stopped = [c for c in calls if c["is_error"] and label == "after"]
     attacker_domain = "acme-payroll.example"
     return {
