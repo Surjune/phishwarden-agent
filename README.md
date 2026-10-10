@@ -3,6 +3,10 @@
 **AI agents that investigate and clean up phishing emails across a company, kept within
 safe limits by [AgntID](https://agntid.ai).**
 
+**Live demo:** [phishwarden-agntid.vercel.app](https://phishwarden-agntid.vercel.app), the
+dashboard with the real recorded runs (read-only; to run the agents yourself, see
+[Try it locally](#try-it-locally)).
+
 ## In one minute
 
 An employee gets a suspicious email and clicks **"Report phishing"**. Someone now has to
