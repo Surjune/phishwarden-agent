@@ -314,7 +314,7 @@ table.cmp { width: 100%; border-collapse: separate; border-spacing: 0; }
       <div class="sys"><span class="dot" id="h-tools"></span>SOC tool server<span class="state" id="hs-tools">…</span></div>
       <div class="sys"><span class="dot" id="h-agntid"></span>AgntID runtime<span class="state" id="hs-agntid">…</span></div>
       <div class="side-links">
-        <a href="http://localhost:8025" target="_blank" rel="noopener"><span data-icon="inbox"></span>Open company mailbox<span data-icon="external" style="margin-left:auto"></span></a>
+        <a id="mailbox-link" href="http://localhost:8025" target="_blank" rel="noopener"><span data-icon="inbox"></span>Open company mailbox<span data-icon="external" style="margin-left:auto"></span></a>
         <a href="https://app.agntid.ai/reporting" target="_blank" rel="noopener"><span data-icon="file"></span>AgntID audit log<span data-icon="external" style="margin-left:auto"></span></a>
       </div>
     </div>
@@ -388,7 +388,17 @@ function toast(msg) {
   const t = document.getElementById("toast"); t.textContent = msg; t.classList.add("show");
   clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 2600);
 }
+// Static build (deploy/build_site.py): the same page served from saved run data, read-only.
+const STATIC = window.PW_STATIC === true;
+const STATIC_DATA = {
+  "/api/email": "data/email.json", "/api/runs/before": "data/runs-before.json",
+  "/api/runs/after": "data/runs-after.json", "/api/compare": "data/compare.json",
+};
 async function api(path, opts) {
+  if (STATIC) {
+    if (opts && opts.method === "POST") throw new Error("This is a recorded demo. Clone the repo to run the agents live.");
+    path = STATIC_DATA[path];
+  }
   const res = await fetch(path, opts);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
@@ -404,11 +414,12 @@ async function loadAll() {
   Object.assign(S, { email, compare }); S.runs.before = before; S.runs.after = after;
 }
 async function loadHealth() {
-  try { S.health = await api("/api/health"); } catch { S.health = null; }
   const set = (key, up, label) => {
     const d = document.getElementById(`h-${key}`); d.className = `dot ${up ? "up" : "down"}`;
     document.getElementById(`hs-${key}`).textContent = label;
   };
+  if (STATIC) { ["mail", "tools", "agntid"].forEach((k) => set(k, true, "Recorded")); return; }
+  try { S.health = await api("/api/health"); } catch { S.health = null; }
   const h = S.health || {};
   set("mail", h.mail, h.mail ? "Online" : "Offline");
   set("tools", h.tools, h.tools ? "Online" : "Offline");
@@ -654,6 +665,11 @@ async function poll() {
 
 document.getElementById("reset-btn").addEventListener("click", resetMailbox);
 window.addEventListener("hashchange", route);
+if (STATIC) {
+  document.getElementById("mailbox-link").remove();
+  const reset = document.getElementById("reset-btn");
+  reset.outerHTML = '<span class="pill" title="Real recorded runs. Clone the repo to run the agents live.">Recorded demo</span>';
+}
 hydrateIcons();
 (async () => {
   try { await loadAll(); } catch (e) { toast(e.message); }
