@@ -3,7 +3,8 @@ services:
     image: axllent/mailpit:latest
     container_name: phishwarden-mailpit
     ports:
-      - "1025:1025"   # SMTP
-      - "8025:8025"   # web UI + REST API
+      - "127.0.0.1:1025:1025"   # SMTP
+      - "127.0.0.1:8025:8025"   # web UI + REST API
     environment:
       MP_MAX_MESSAGES: 5000
+      MP_DISABLE_VERSION_CHECK: "true"

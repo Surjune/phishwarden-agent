@@ -18,7 +18,7 @@ import anthropic
 from mcp import Client
 from mcp.client.streamable_http import create_mcp_http_client, streamable_http_client
 
-from phishwarden import config, prompts, server
+from phishwarden import config, outcome, prompts, server
 
 TOOL_RESULT_LOG_CHARS = 1500
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
@@ -148,7 +148,7 @@ async def run_pipeline(report_id: str, label: str) -> str:
         log=log,
         client=client,
     )
-    log.emit(type="run_done", final_report=final_report)
+    log.emit(type="run_done", final_report=final_report, outcome=outcome.collect())
     return final_report
 
 
