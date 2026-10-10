@@ -16,14 +16,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import anthropic
 from mcp import Client
 from mcp.client.streamable_http import create_mcp_http_client, streamable_http_client
 
-from phishwarden import config, outcome, prompts, server
+from phishwarden import config, llm, outcome, prompts, server
 
 TOOL_RESULT_LOG_CHARS = 1500
-FALLBACK_BETA = "server-side-fallback-2026-07-01"
 
 
 class RunLog:
@@ -64,7 +62,6 @@ async def run_agent(
     task: str,
     mcp_url: str,
     log: RunLog,
-    client: anthropic.Anthropic,
 ) -> str:
     """Run one agent to completion and return its final text."""
     log.emit(type="agent_start", agent=name, mcp_url=mcp_url)
@@ -73,8 +70,8 @@ async def run_agent(
     )
     async with Client(transport) as mcp:
         listed = await mcp.list_tools()
-        # The AgntID runtime prefixes tool names (e.g. "phishwarden.search_mail"); the Claude API
-        # only accepts [a-zA-Z0-9_-], so map API-safe names back to the MCP names.
+        # The AgntID runtime prefixes tool names (e.g. "phishwarden.search_mail"); model APIs
+        # restrict tool-name characters, so map API-safe names back to the MCP names.
         mcp_names = {_api_tool_name(t.name): t.name for t in listed.tools}
         tools = [
             {"name": _api_tool_name(t.name), "description": t.description or "", "input_schema": t.input_schema}
@@ -82,53 +79,38 @@ async def run_agent(
         ]
         log.emit(type="tools_listed", agent=name, tools=list(mcp_names.values()))
 
-        messages: list[dict[str, Any]] = [{"role": "user", "content": task}]
+        session = llm.new_session(system, task, tools)
         final_text = ""
         for _ in range(config.MAX_AGENT_TURNS):
-            response = client.beta.messages.create(
-                model=config.MODEL,
-                max_tokens=16000,
-                system=system,
-                tools=tools,
-                messages=messages,
-                output_config={"effort": "medium"},
-                betas=[FALLBACK_BETA],
-                fallbacks="default",
-            )
-            if response.stop_reason == "refusal":
+            turn = await asyncio.to_thread(session.send)
+            if turn.refusal:
                 final_text = "The model declined this request."
-                log.emit(type="refusal", agent=name, details=str(response.stop_details))
+                log.emit(type="refusal", agent=name, details=turn.refusal)
+                break
+            if turn.text:
+                final_text = turn.text
+                log.emit(type="agent_text", agent=name, text=turn.text)
+            if not turn.tool_calls:
                 break
 
-            texts = [b.text for b in response.content if b.type == "text"]
-            if texts:
-                final_text = "\n".join(texts)
-                log.emit(type="agent_text", agent=name, text=final_text)
-
-            tool_uses = [b for b in response.content if b.type == "tool_use"]
-            if response.stop_reason != "tool_use" or not tool_uses:
-                break
-
-            messages.append({"role": "assistant", "content": response.content})
-            tool_results = []
-            for block in tool_uses:
+            outcomes = []
+            for call in turn.tool_calls:
+                mcp_name = mcp_names.get(call.name, call.name)
                 try:
-                    result = await mcp.call_tool(mcp_names[block.name], block.input)
+                    result = await mcp.call_tool(mcp_name, call.args)
                     text, is_error = _result_text(result), bool(result.is_error)
                 except Exception as exc:  # transport-level failure, e.g. a proxy rejecting the call
                     text, is_error = f"{type(exc).__name__}: {exc}", True
                 log.emit(
                     type="tool_call",
                     agent=name,
-                    tool=mcp_names[block.name],
-                    input=block.input,
+                    tool=mcp_name,
+                    input=call.args,
                     is_error=is_error,
                     result=text[:TOOL_RESULT_LOG_CHARS],
                 )
-                tool_results.append(
-                    {"type": "tool_result", "tool_use_id": block.id, "content": text, "is_error": is_error}
-                )
-            messages.append({"role": "user", "content": tool_results})
+                outcomes.append(llm.ToolOutcome(call=call, text=text, is_error=is_error))
+            session.add_tool_results(outcomes)
 
     log.emit(type="agent_done", agent=name, final=final_text)
     return final_text
@@ -136,8 +118,7 @@ async def run_agent(
 
 async def run_pipeline(report_id: str, label: str) -> str:
     log = RunLog(label)
-    client = anthropic.Anthropic()
-    log.emit(type="run_start", report_id=report_id, label=label,
+    log.emit(type="run_start", report_id=report_id, label=label, model=llm.model_name(),
              triage_mcp_url=config.TRIAGE_MCP_URL, response_mcp_url=config.RESPONSE_MCP_URL)
 
     triage_report = await run_agent(
@@ -146,7 +127,6 @@ async def run_pipeline(report_id: str, label: str) -> str:
         task=prompts.triage_task(report_id),
         mcp_url=config.TRIAGE_MCP_URL,
         log=log,
-        client=client,
     )
     evidence = fetch_evidence(report_id)
     final_report = await run_agent(
@@ -155,7 +135,6 @@ async def run_pipeline(report_id: str, label: str) -> str:
         task=prompts.response_task(report_id, triage_report, evidence),
         mcp_url=config.RESPONSE_MCP_URL,
         log=log,
-        client=client,
     )
     log.emit(type="run_done", final_report=final_report, outcome=outcome.collect())
     return final_report
