@@ -1,0 +1,5 @@
+[
+  {"time": "2026-10-10T09:41:12+05:30", "user": "ravi.kumar@acme.example", "url": "https://acme-payroll.example/login?u=ravi.kumar", "action": "allowed", "source_ip": "10.20.4.118"},
+  {"time": "2026-10-10T09:47:55+05:30", "user": "arjun.rao@acme.example", "url": "https://acme-payroll.example/login?u=arjun.rao", "action": "allowed", "source_ip": "10.20.1.12"},
+  {"time": "2026-10-10T09:15:03+05:30", "user": "anita.desai@acme.example", "url": "https://billing.northwind.example/invoices/INV-55120", "action": "allowed", "source_ip": "10.20.3.41"}
+]

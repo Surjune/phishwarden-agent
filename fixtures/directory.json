@@ -1,0 +1,21 @@
+{
+  "domain": "acme.example",
+  "vip_users": ["meera.iyer@acme.example", "arjun.rao@acme.example"],
+  "admin_users": ["sameer.joshi@acme.example"],
+  "users": [
+    {"email": "meera.iyer@acme.example", "name": "Meera Iyer", "title": "Chief Executive Officer", "department": "Executive"},
+    {"email": "arjun.rao@acme.example", "name": "Arjun Rao", "title": "Chief Financial Officer", "department": "Finance"},
+    {"email": "priya.nair@acme.example", "name": "Priya Nair", "title": "HR Analyst", "department": "People"},
+    {"email": "ravi.kumar@acme.example", "name": "Ravi Kumar", "title": "Account Executive", "department": "Sales"},
+    {"email": "anita.desai@acme.example", "name": "Anita Desai", "title": "Accounts Payable Lead", "department": "Finance"},
+    {"email": "karan.mehta@acme.example", "name": "Karan Mehta", "title": "Store Operations Manager", "department": "Operations"},
+    {"email": "sneha.pillai@acme.example", "name": "Sneha Pillai", "title": "Marketing Specialist", "department": "Marketing"},
+    {"email": "vikram.shah@acme.example", "name": "Vikram Shah", "title": "Supply Chain Analyst", "department": "Operations"},
+    {"email": "divya.menon@acme.example", "name": "Divya Menon", "title": "Recruiter", "department": "People"},
+    {"email": "rahul.verma@acme.example", "name": "Rahul Verma", "title": "Software Engineer", "department": "Engineering"},
+    {"email": "fatima.khan@acme.example", "name": "Fatima Khan", "title": "Customer Support Lead", "department": "Support"},
+    {"email": "john.dsouza@acme.example", "name": "John D'Souza", "title": "Store Manager", "department": "Operations"},
+    {"email": "sameer.joshi@acme.example", "name": "Sameer Joshi", "title": "IT Administrator", "department": "IT"},
+    {"email": "nisha.rao@acme.example", "name": "Nisha Rao", "title": "SOC Lead", "department": "Security"}
+  ]
+}

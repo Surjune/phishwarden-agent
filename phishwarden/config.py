@@ -1,0 +1,32 @@
+"""Runtime settings, read from the environment (and `.env` when present)."""
+
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(ROOT / ".env")
+
+FIXTURES_DIR = ROOT / "fixtures"
+STATE_DIR = ROOT / "state"
+RUNS_DIR = ROOT / "runs"
+
+MAILPIT_API = os.getenv("MAILPIT_API", "http://localhost:8025/api/v1")
+MAILPIT_SMTP_HOST = os.getenv("MAILPIT_SMTP_HOST", "localhost")
+MAILPIT_SMTP_PORT = int(os.getenv("MAILPIT_SMTP_PORT", "1025"))
+
+MCP_HOST = os.getenv("MCP_HOST", "127.0.0.1")
+MCP_PORT = int(os.getenv("MCP_PORT", "8000"))
+DIRECT_MCP_URL = f"http://{MCP_HOST}:{MCP_PORT}/mcp"
+
+# Where each agent sends its tool calls. Pointing these at the AgntID runtime proxy is the
+# only change between the "before" and "after" runs.
+TRIAGE_MCP_URL = os.getenv("TRIAGE_MCP_URL", DIRECT_MCP_URL)
+RESPONSE_MCP_URL = os.getenv("RESPONSE_MCP_URL", DIRECT_MCP_URL)
+
+MODEL = os.getenv("PHISHWARDEN_MODEL", "claude-opus-5-5")
+MAX_AGENT_TURNS = int(os.getenv("PHISHWARDEN_MAX_TURNS", "25"))
+
+QUARANTINE_TAG = "quarantined"
+SOC_SENDER = "soc-automation@acme.example"

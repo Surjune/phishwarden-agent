@@ -1,0 +1,6 @@
+[
+  {"time": "2026-10-10T08:58:40+05:30", "user": "ravi.kumar@acme.example", "location": "Bengaluru, IN", "ip": "49.207.10.33", "asn": "Acme office ISP", "result": "success", "mfa": "satisfied", "new_location": false},
+  {"time": "2026-10-10T08:31:02+05:30", "user": "arjun.rao@acme.example", "location": "Bengaluru, IN", "ip": "49.207.10.31", "asn": "Acme office ISP", "result": "success", "mfa": "satisfied", "new_location": false},
+  {"time": "2026-10-10T09:57:21+05:30", "user": "arjun.rao@acme.example", "location": "Frankfurt, DE", "ip": "185.220.66.14", "asn": "AS-HOSTVPS (bulk VPS provider)", "result": "success", "mfa": "satisfied via push approval", "new_location": true},
+  {"time": "2026-10-10T09:58:05+05:30", "user": "arjun.rao@acme.example", "location": "Frankfurt, DE", "ip": "185.220.66.14", "asn": "AS-HOSTVPS (bulk VPS provider)", "result": "success", "mfa": "token reused", "new_location": true, "note": "Mailbox rule creation attempted from this session"}
+]

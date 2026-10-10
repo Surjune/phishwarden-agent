@@ -1,0 +1,38 @@
+{
+  "acme-payroll.example": {
+    "registered": "2026-10-08",
+    "domain_age_days": 2,
+    "registrar": "Privacy-protected registrar",
+    "hosting": "AS-HOSTVPS (bulk VPS provider)",
+    "page_type": "credential_harvest",
+    "page_summary": "Pixel-perfect clone of the Acme Microsoft 365 sign-in page. Form posts username and password to /collect.php on the same host.",
+    "seen_in_threat_feeds": true
+  },
+  "payroll-desk.example": {
+    "registered": "2026-10-07",
+    "domain_age_days": 3,
+    "registrar": "Privacy-protected registrar",
+    "hosting": "AS-HOSTVPS (bulk VPS provider)",
+    "page_type": "parked",
+    "page_summary": "No website. MX record only; used as the Reply-To mailbox.",
+    "seen_in_threat_feeds": false
+  },
+  "northwind.example": {
+    "registered": "2017-03-14",
+    "domain_age_days": 3497,
+    "registrar": "Established corporate registrar",
+    "hosting": "Northwind Traders corporate hosting",
+    "page_type": "corporate_site",
+    "page_summary": "Northwind Traders, a long-standing Acme supplier. Billing portal behind SSO.",
+    "seen_in_threat_feeds": false
+  },
+  "acme.example": {
+    "registered": "2009-06-02",
+    "domain_age_days": 6339,
+    "registrar": "Established corporate registrar",
+    "hosting": "Acme corporate",
+    "page_type": "corporate_site",
+    "page_summary": "Acme Retail corporate website.",
+    "seen_in_threat_feeds": false
+  }
+}
