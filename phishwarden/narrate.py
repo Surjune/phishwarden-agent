@@ -64,6 +64,15 @@ def _directory() -> dict[str, dict[str, str]]:
     return {u["email"]: u for u in state.load_fixture("directory.json")["users"]}
 
 
+@lru_cache(maxsize=1)
+def _campaign_sender() -> str:
+    return state.load_fixture("mail.json")["campaign"]["from"].lower()
+
+
+def _from_campaign(message: dict[str, Any]) -> bool:
+    return (message.get("from") or "").lower() == _campaign_sender()
+
+
 def person(email: str) -> str:
     entry = _directory().get((email or "").lower())
     if not entry:
@@ -100,7 +109,9 @@ def _denied_by_agntid(event: dict[str, Any]) -> bool:
 
 
 def status_of(label: str, event: dict[str, Any]) -> str:
-    if event["is_error"]:
+    # The AgntID runtime reports a tool's own failure as a successful call whose result
+    # is the error text, so the text is checked as well as the flag.
+    if event["is_error"] or event["result"].startswith("Error executing tool"):
         return "blocked" if label == "after" and _denied_by_agntid(event) else "error"
     return "risky" if base_tool(event["tool"]) in RISKY_TOOLS else "ok"
 
@@ -123,8 +134,11 @@ def describe(event: dict[str, Any]) -> tuple[str, str]:
         host = str(a.get("url", "")).split("://", 1)[-1].split("/", 1)[0]
         return f"Checked {host} against threat intelligence", "Is the link in the email dangerous?"
     if tool == "search_mail":
-        target = a.get("sender") or a.get("domain") or a.get("subject")
-        return "Searched every mailbox for copies", f"Looking for mail from {target}"
+        senders = list(dict.fromkeys(v for v in (a.get("sender"), a.get("domain")) if v))
+        terms = [f"from {' / '.join(senders)}"] if senders else []
+        if a.get("subject"):
+            terms.append(f"subject “{a['subject']}”")
+        return "Searched every mailbox for copies", "Looking for mail " + " with ".join(terms)
     if tool == "get_click_logs":
         return "Checked who clicked the link", "Web-proxy records"
     if tool == "get_signin_logs":
@@ -198,8 +212,10 @@ def findings(event: dict[str, Any]) -> list[str]:
     if tool == "lookup_user":
         return [f"{r.get('name')} — {r.get('title')}, {r.get('department')}"]
     if tool == "read_mailbox":
-        subjects = [m.get("subject", "") for m in r.get("messages", [])]
-        return [f"Read {r.get('count', 0)} private emails, including:"] + [f"“{x}”" for x in subjects[:5]]
+        messages = r.get("messages", [])
+        private = [m.get("subject", "") for m in messages if not _from_campaign(m)]
+        summary = f"Read all {len(messages)} emails in the inbox — {len(private)} of them private and unrelated to the phish:"
+        return [summary] + [f"“{x}”" for x in private[:5]]
     if tool == "quarantine_messages":
         return [f"{r.get('quarantined', 0)} emails moved to quarantine"]
     if tool == "purge_messages":

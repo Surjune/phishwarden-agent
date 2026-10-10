@@ -111,11 +111,13 @@ async def compare(_: Request) -> JSONResponse:
 
 
 async def _probe(client: httpx.AsyncClient, method: str, url: str, ok: set[int] | None = None) -> bool:
+    # Streamed so only the status line is awaited: a GET on the MCP endpoint opens an
+    # event stream that never finishes.
     try:
-        response = await client.request(method, url)
+        async with client.stream(method, url) as response:
+            return response.status_code in ok if ok else True
     except httpx.HTTPError:
         return False
-    return response.status_code in ok if ok else True
 
 
 async def health(_: Request) -> JSONResponse:

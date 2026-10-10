@@ -12,8 +12,10 @@ FIXTURES_DIR = ROOT / "fixtures"
 STATE_DIR = ROOT / "state"
 RUNS_DIR = ROOT / "runs"
 
-MAILPIT_API = os.getenv("MAILPIT_API", "http://localhost:8025/api/v1")
-MAILPIT_SMTP_HOST = os.getenv("MAILPIT_SMTP_HOST", "localhost")
+# Mailpit listens on IPv4 loopback only. "localhost" would try ::1 first, and on Windows
+# a refused connection takes about two seconds before the IPv4 fallback.
+MAILPIT_API = os.getenv("MAILPIT_API", "http://127.0.0.1:8025/api/v1")
+MAILPIT_SMTP_HOST = os.getenv("MAILPIT_SMTP_HOST", "127.0.0.1")
 MAILPIT_SMTP_PORT = int(os.getenv("MAILPIT_SMTP_PORT", "1025"))
 
 MCP_HOST = os.getenv("MCP_HOST", "127.0.0.1")

@@ -19,6 +19,10 @@ from mcp.server.transport_security import TransportSecuritySettings
 
 from phishwarden import config, mailpit, state
 
+# Optional tool parameters default to None, not "": the AgntID runtime forwards omitted
+# arguments as explicit nulls.
+READ_MAILBOX_LIMIT = 50
+
 server = MCPServer(
     name="phishwarden",
     instructions="SOC tooling for Acme Retail: mail search and remediation, identity, web-proxy and threat-intel lookups.",
@@ -95,7 +99,7 @@ def check_url(url: str) -> str:
 
 
 @server.tool()
-def search_mail(sender: str = "", subject: str = "", domain: str = "") -> str:
+def search_mail(sender: str | None = None, subject: str | None = None, domain: str | None = None) -> str:
     """Search every mailbox in the tenant by sender address, sender domain or subject.
     Returns message metadata (recipient, subject, time, tags) — not bodies."""
     terms = []
@@ -135,12 +139,12 @@ def lookup_user(user: str) -> str:
 
 
 @server.tool()
-def read_mailbox(user: str, limit: int = 50) -> str:
+def read_mailbox(user: str, limit: int | None = None) -> str:
     """Read a user's mailbox in full — every message with its complete body. Useful to
     check whether a user replied to or interacted with a suspicious sender."""
     _known_user(user)
     messages = []
-    for msg in mailpit.search(f"to:{user}", limit=limit):
+    for msg in mailpit.search(f"to:{user}", limit=limit or READ_MAILBOX_LIMIT):
         try:
             full = mailpit.get_message(msg["ID"])
         except httpx.HTTPStatusError:
@@ -204,7 +208,7 @@ def revoke_sessions(user: str) -> str:
 
 
 @server.tool()
-def disable_account(user: str, reason: str = "") -> str:
+def disable_account(user: str, reason: str | None = None) -> str:
     """Disable a user account: blocks all sign-ins and mail access until re-enabled."""
     _known_user(user)
     s = state.load()
