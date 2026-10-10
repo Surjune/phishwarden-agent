@@ -12,6 +12,7 @@ import asyncio
 import json
 import re
 import sys
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -46,6 +47,23 @@ class RunLog:
             print(f"== {kind}: {event.get('agent', '')} {event.get('mcp_url', '')}")
 
 
+AGNTID_TOOL_PREFIX = "agntid_"
+SOC_ANALYST_ON_DUTY = "nisha.rao@acme.example"
+
+
+async def _open_agntid_task(mcp: Client, agntid_tools: set[str], agent: str, task: str, log: "RunLog") -> str | None:
+    if "agntid_task_open" not in agntid_tools:
+        return None
+    task_id = f"{agent}-{uuid.uuid4().hex[:12]}"
+    result = await mcp.call_tool(
+        "agntid_task_open",
+        {"task_id": task_id, "agent_id": f"phishwarden-{agent}", "user_id": SOC_ANALYST_ON_DUTY, "prompt": task},
+    )
+    log.emit(type="agntid_task", agent=agent, task_id=task_id, is_error=bool(result.is_error),
+             result=_result_text(result)[:TOOL_RESULT_LOG_CHARS])
+    return task_id
+
+
 def _api_tool_name(mcp_name: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_-]", "_", mcp_name)[:64]
 
@@ -70,6 +88,12 @@ async def run_agent(
     )
     async with Client(transport) as mcp:
         listed = await mcp.list_tools()
+        # When the endpoint is the AgntID runtime it also offers its own task-glue tools.
+        # The harness (not the model) uses them to declare which agent is acting and for
+        # what task, so AgntID can check every call against that task.
+        agntid_tools = {t.name for t in listed.tools if t.name.startswith(AGNTID_TOOL_PREFIX)}
+        listed.tools = [t for t in listed.tools if t.name not in agntid_tools]
+        task_id = await _open_agntid_task(mcp, agntid_tools, name, task, log)
         # The AgntID runtime prefixes tool names (e.g. "phishwarden.search_mail"); model APIs
         # restrict tool-name characters, so map API-safe names back to the MCP names.
         mcp_names = {_api_tool_name(t.name): t.name for t in listed.tools}
@@ -111,6 +135,9 @@ async def run_agent(
                 )
                 outcomes.append(llm.ToolOutcome(call=call, text=text, is_error=is_error))
             session.add_tool_results(outcomes)
+
+        if task_id:
+            await mcp.call_tool("agntid_task_close", {"task_id": task_id})
 
     log.emit(type="agent_done", agent=name, final=final_text)
     return final_text

@@ -5,6 +5,7 @@ Run: uv run streamlit run ui/app.py
 
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -39,7 +40,7 @@ RISKY_TOOLS = {
     "allowlist_sender": "trusted a sender domain",
     "release_quarantine": "released quarantined mail",
 }
-PENDING_MARKERS = ("approval", "pending", "escalat", "awaiting")
+PENDING_MARKERS = ("escalat", "awaiting approval", "pending_approval")
 MAILPIT_UI = "http://localhost:8025"
 
 st.set_page_config(page_title="PhishWarden", page_icon="🛡️", layout="wide")
@@ -55,6 +56,12 @@ def load_events(label: str) -> list[dict[str, Any]]:
 def base_tool(name: str) -> str:
     """Tool name without the server prefix the AgntID runtime adds (e.g. "phishwarden.")."""
     return name.rsplit(".", 1)[-1].removeprefix("phishwarden_")
+
+
+def agntid_reason(result: str) -> str:
+    """The denial reason AgntID attaches to a blocked call, if any."""
+    match = re.search(r'"__agntid_error":\s*"([^"]+)"', result)
+    return match.group(1) if match else ""
 
 
 def classify(label: str, event: dict[str, Any]) -> str:
@@ -97,7 +104,9 @@ def render_timeline(container: Any, label: str, events: list[dict[str, Any]]) ->
                 elif status == "pending":
                     st.markdown(f":orange[⏸ **waiting for approval**] {line}")
                 elif status == "blocked":
-                    st.markdown(f":red[⛔ **blocked**] {line}")
+                    reason = agntid_reason(event["result"])
+                    suffix = f"  \n:gray[{reason}]" if reason else ""
+                    st.markdown(f":red[⛔ **blocked by AgntID**] {line}{suffix}")
                 else:
                     st.markdown(f":gray[✖ error] {line}")
                 with st.expander("result", expanded=False):
