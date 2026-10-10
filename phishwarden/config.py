@@ -32,7 +32,7 @@ AGNTID_RESPONSE_MCP_URL = os.getenv("AGNTID_RESPONSE_MCP_URL", "")
 # Model provider: "gemini" (default) or "claude".
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
 CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-opus-5-5")
 MAX_AGENT_TURNS = int(os.getenv("PHISHWARDEN_MAX_TURNS", "25"))
 
